@@ -468,7 +468,104 @@ def main():
             st.plotly_chart(fig_sizes, use_container_width=True)
             
     # Tab 2: Analysis
+    # In Tab 2: Analysis
     with tab2:
+        # Add scatter plot at the top
+        st.header("Rules Distribution")
+        
+        # Create scatter plot
+        scatter_fig = px.scatter(
+            display_rules,
+            x='confidence',
+            y='lift',
+            size='support',  # Size of points based on support
+            hover_data={
+                'antecedents': True,
+                'consequents': True,
+                'support': ':.3f',
+                'confidence': ':.3f',
+                'lift': ':.3f'
+            },
+            title='Rule Metrics Distribution',
+            labels={
+                'confidence': 'Confidence',
+                'lift': 'Lift',
+                'support': 'Support'
+            },
+            height=400
+        )
+        
+        # Update layout
+        scatter_fig.update_traces(
+            marker=dict(
+                sizemin=5,  # Minimum size of points
+                sizeref=2.*max(display_rules['support'])/(20.**2),  # Scale size reference
+                sizemode='area'
+            ),
+            selector=dict(mode='markers')
+        )
+        
+        scatter_fig.update_layout(
+            title_x=0.5,
+            title_y=0.95,
+            margin=dict(l=20, r=20, t=40, b=20),
+            xaxis_title="Confidence",
+            yaxis_title="Lift",
+            showlegend=False,
+            # Add reference lines
+            shapes=[
+                # Horizontal line at lift=1
+                dict(
+                    type="line",
+                    yref="y",
+                    y0=1,
+                    y1=1,
+                    xref="paper",
+                    x0=0,
+                    x1=1,
+                    line=dict(
+                        color="red",
+                        width=1,
+                        dash="dash",
+                    )
+                )
+            ],
+            annotations=[
+                # Annotation for the reference line
+                dict(
+                    x=0.02,
+                    y=1.1,
+                    xref="paper",
+                    yref="y",
+                    text="Baseline (Lift=1)",
+                    showarrow=False,
+                    font=dict(size=10, color="red"),
+                )
+            ]
+        )
+        
+        # Display the scatter plot
+        st.plotly_chart(scatter_fig, use_container_width=True)
+        
+        # Add explanation for the scatter plot
+        with st.expander("📊 Understanding the Scatter Plot"):
+            st.markdown("""
+            ### Scatter Plot Interpretation
+            
+            This scatter plot shows the relationship between Confidence and Lift for all rules:
+            
+            - **X-axis**: Confidence (how likely the consequent follows from the antecedent)
+            - **Y-axis**: Lift (how much more likely compared to random chance)
+            - **Bubble size**: Support (how frequently the rule appears in the data)
+            
+            Key insights:
+            - Points above the red line (Lift > 1) indicate positive associations
+            - Larger bubbles represent more frequent patterns
+            - Top-right quadrant shows strong, reliable rules
+            - Hover over points to see the specific items in each rule
+            """)
+        
+        # Rest of the Analysis tab code...
         st.header("Association Rules")
         st.dataframe(display_rules, use_container_width=True)
         
