@@ -274,10 +274,8 @@ def create_rule_visualization(rule_row):
 
 def main():
     """Main application function."""
-    # File upload section
-    st.header("Upload Data")
     
-    # Show data format instructions
+    # File upload section (always visible)
     with st.expander("📋 Data Format Instructions"):
         st.markdown("""
         Your CSV file should follow these requirements:
@@ -317,17 +315,7 @@ def main():
         st.error(f"Error loading data: {str(e)}")
         st.stop()
     
-    # Data preview and summary
-    st.header("Data Preview")
-    st.dataframe(df.head())
-    
-    st.subheader("Dataset Summary")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Number of Transactions", len(df))
-    col2.metric("Number of Products", len(df.columns))
-    col3.metric("Average Items per Transaction", df.sum(axis=1).mean().round(2))
-    
-    # Analysis parameters
+    # Analysis parameters in sidebar (always visible)
     st.sidebar.header("Analysis Parameters")
     
     min_support = st.sidebar.slider(
@@ -357,178 +345,248 @@ def main():
         help="Minimum lift value (measure of rule strength)"
     )
     
-    # Generate insights
-    with st.spinner("Generating frequent itemsets..."):
+    # Generate insights before creating tabs
+    with st.spinner("Generating insights..."):
         frequent_itemsets = generate_frequent_itemsets(df, min_support)
-    
-    if frequent_itemsets.empty:
-        st.warning("No frequent itemsets found with current support threshold. Try lowering the minimum support value.")
-        st.stop()
-    
-    with st.spinner("Discovering association rules..."):
+        
+        if frequent_itemsets.empty:
+            st.warning("No frequent itemsets found with current support threshold. Try lowering the minimum support value.")
+            st.stop()
+        
         rules = generate_association_rules(frequent_itemsets, min_confidence)
-    
-    if rules.empty:
-        st.warning("No rules found with current parameters. Try adjusting the minimum support, confidence, or lift values.")
-        st.stop()
-
-    # Product insights
-    st.header("Product Insights")
-    col5, col6 = st.columns(2)
-    
-    with col5:
-        # Product frequency chart
-        product_freq = df.sum().sort_values(ascending=False)
-        fig_freq = px.bar(
-            product_freq,
-            title="Product Purchase Frequency",
-            labels={'value': 'Frequency', 'index': 'Product'},
-            height=400
-        )
-        st.plotly_chart(fig_freq)
-    
-    with col6:
-        # Itemset size distribution
-        itemset_sizes = frequent_itemsets['itemsets'].apply(len)
-        size_dist = itemset_sizes.value_counts().sort_index()
-        fig_sizes = px.bar(
-            size_dist,
-            title="Frequent Itemset Size Distribution",
-            labels={'index': 'Itemset Size', 'value': 'Count'},
-            height=400
-        )
-        st.plotly_chart(fig_sizes)
-    
-    # Rules table display
-    st.header("Analysis Results")
-    st.subheader("Association Rules")
-    display_rules = rules.copy()
-    display_rules['antecedents'] = display_rules['antecedents'].apply(lambda x: ', '.join(list(x)))
-    display_rules['consequents'] = display_rules['consequents'].apply(lambda x: ', '.join(list(x)))
-    display_rules = display_rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']]
-    display_rules = display_rules.round(3)
-    st.dataframe(display_rules, use_container_width=True)
-    
-    # Detailed rule analysis with optimized dropdown
-    st.header("Detailed Rule Analysis")
-    
-    # Create a search box for filtering rules
-    search_term = st.text_input("🔍 Search rules (e.g., product name)", "")
-    
-    # Create rule text and filter based on search
-    display_rules['rule_text'] = (
-        display_rules['antecedents'] + ' → ' + display_rules['consequents'] +
-        ' (Conf: ' + display_rules['confidence'].apply(lambda x: f'{x:.2f}') +
-        ', Lift: ' + display_rules['lift'].apply(lambda x: f'{x:.2f}') + ')'
-    )
-    
-    # Filter rules based on search term
-    if search_term:
-        filtered_rules = display_rules[
-            display_rules['rule_text'].str.lower().str.contains(search_term.lower())
-        ]
-    else:
-        # If no search term, show top rules by lift (limited number)
-        filtered_rules = display_rules.nlargest(50, 'lift')
-    
-    # Show dropdown with filtered rules
-    if not filtered_rules.empty:
-        selected_rule = st.selectbox(
-            "Select a rule to analyze:",
-            options=filtered_rules['rule_text'].tolist(),
-            help="Choose a rule to see detailed analysis and recommendations"
-        )
         
-        # Get the selected rule data
-        selected_rule_data = display_rules[
-            display_rules['rule_text'] == selected_rule
-        ].iloc[0]
+        if rules.empty:
+            st.warning("No rules found with current parameters. Try adjusting the minimum support, confidence, or lift values.")
+            st.stop()
         
-        col1, col2 = st.columns([1, 1])
+        # Prepare rules for display
+        display_rules = rules.copy()
+        display_rules['antecedents'] = display_rules['antecedents'].apply(lambda x: ', '.join(list(x)))
+        display_rules['consequents'] = display_rules['consequents'].apply(lambda x: ', '.join(list(x)))
+        display_rules = display_rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']]
+        display_rules = display_rules.round(3)
+    
+    # Create tabs
+    tab1, tab2, tab3 = st.tabs([
+        "Data Overview", 
+        "Analysis", 
+        "Recommendations"
+    ])
+    
+    # Tab 1: Data Overview
+    with tab1:
+        st.header("Data Preview")
+        st.dataframe(df.head(), use_container_width=True)
+        
+        # Dataset Summary with cards
+        st.subheader("Dataset Summary")
+        
+        # Custom CSS for cards
+        st.markdown("""
+        <style>
+        .summary-card {
+            padding: 20px;
+            border-radius: 10px;
+            background-color: #f0f2f6;
+            border: 1px solid #ddd;
+            margin: 10px 0;
+        }
+        .metric-label {
+            font-size: 1rem;
+            color: #555;
+            margin-bottom: 8px;
+        }
+        .metric-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #0f1b2a;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        col1, col2, col3 = st.columns(3)
         
         with col1:
-            fig = create_rule_visualization(selected_rule_data)
-            st.plotly_chart(fig, use_container_width=True)
+            st.markdown(f"""
+            <div class="summary-card">
+                <div class="metric-label">Number of Transactions</div>
+                <div class="metric-value">{len(df):,}</div>
+            </div>
+            """, unsafe_allow_html=True)
             
         with col2:
-            # Create metrics visualization
-            metrics_fig = go.Figure()
+            st.markdown(f"""
+            <div class="summary-card">
+                <div class="metric-label">Number of Products</div>
+                <div class="metric-value">{len(df.columns):,}</div>
+            </div>
+            """, unsafe_allow_html=True)
             
-            # Add confidence gauge
-            metrics_fig.add_trace(go.Indicator(
-                mode="gauge+number",
-                value=selected_rule_data['confidence'] * 100,
-                title={'text': "Confidence %"},
-                domain={'x': [0, 1], 'y': [0.6, 1]},
-                gauge={
-                    'axis': {'range': [0, 100]},
-                    'bar': {'color': "lightblue"},
-                    'steps': [
-                        {'range': [0, 50], 'color': 'lightgray'},
-                        {'range': [50, 75], 'color': 'gray'},
-                        {'range': [75, 100], 'color': 'darkgray'}
-                    ]
-                }
-            ))
+        with col3:
+            st.markdown(f"""
+            <div class="summary-card">
+                <div class="metric-label">Average Items per Transaction</div>
+                <div class="metric-value">{df.sum(axis=1).mean():.2f}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Product frequency chart and Itemset size distribution in one row
+        st.subheader("Purchase Patterns")
+        col4, col5 = st.columns(2)
+        
+        with col4:
+            # Product frequency chart
+            product_freq = df.sum().sort_values(ascending=False)
+            fig_freq = px.bar(
+                product_freq,
+                title="Product Purchase Frequency",
+                labels={'value': 'Frequency', 'index': 'Product'},
+                height=400
+            )
+            fig_freq.update_layout(
+                margin=dict(l=20, r=20, t=40, b=20),
+                title_x=0.5,
+                title_y=0.95
+            )
+            st.plotly_chart(fig_freq, use_container_width=True)
+        
+        with col5:
+            # Itemset size distribution
+            itemset_sizes = frequent_itemsets['itemsets'].apply(len)
+            size_dist = itemset_sizes.value_counts().sort_index()
+            fig_sizes = px.bar(
+                size_dist,
+                title="Frequent Itemset Size Distribution",
+                labels={'index': 'Itemset Size', 'value': 'Count'},
+                height=400
+            )
+            fig_sizes.update_layout(
+                margin=dict(l=20, r=20, t=40, b=20),
+                title_x=0.5,
+                title_y=0.95
+            )
+            st.plotly_chart(fig_sizes, use_container_width=True)
             
-            # Add lift gauge
-            metrics_fig.add_trace(go.Indicator(
-                mode="gauge+number",
-                value=selected_rule_data['lift'],
-                title={'text': "Lift"},
-                domain={'x': [0, 1], 'y': [0, 0.4]},
-                gauge={
-                    'axis': {'range': [0, max(5, selected_rule_data['lift'])]},
-                    'bar': {'color': "lightgreen"},
-                    'steps': [
-                        {'range': [0, 1], 'color': 'lightgray'},
-                        {'range': [1, 2], 'color': 'gray'},
-                        {'range': [2, max(5, selected_rule_data['lift'])], 'color': 'darkgray'}
-                    ]
-                }
-            ))
-            
-            # Update layout
-            metrics_fig.update_layout(
-                height=600,
-                margin=dict(t=40, b=0)
+    # Tab 2: Analysis
+    with tab2:
+        st.header("Association Rules")
+        st.dataframe(display_rules, use_container_width=True)
+        
+        st.header("Rule Analysis")
+        search_term = st.text_input("🔍 Search rules (e.g., product name)", "")
+        
+        # Create rule text and filter based on search
+        display_rules['rule_text'] = (
+            display_rules['antecedents'] + ' → ' + display_rules['consequents'] +
+            ' (Conf: ' + display_rules['confidence'].apply(lambda x: f'{x:.2f}') +
+            ', Lift: ' + display_rules['lift'].apply(lambda x: f'{x:.2f}') + ')'
+        )
+        
+        # Filter rules based on search
+        if search_term:
+            filtered_rules = display_rules[
+                display_rules['rule_text'].str.lower().str.contains(search_term.lower())
+            ]
+        else:
+            filtered_rules = display_rules.nlargest(50, 'lift')
+        
+        if not filtered_rules.empty:
+            selected_rule = st.selectbox(
+                "Select a rule to analyze:",
+                options=filtered_rules['rule_text'].tolist(),
+                help="Choose a rule to see detailed analysis"
             )
             
-            st.plotly_chart(metrics_fig, use_container_width=True)
-        
-        # Show interpretation and recommendations
-        st.markdown(interpret_rule(selected_rule_data, len(df)))
-        
-        # Implementation checklist
-        st.subheader("📋 Implementation Checklist")
-        
-        col3, col4 = st.columns(2)
-        
-        with col3:
-            st.markdown("""
-            #### Immediate Actions:
-            - [ ] Update planogram to reflect product proximity
-            - [ ] Create bundle promotion
-            - [ ] Set up cross-sell recommendation
-            - [ ] Adjust inventory alerts
-            """)
+            selected_rule_data = display_rules[
+                display_rules['rule_text'] == selected_rule
+            ].iloc[0]
             
-        with col4:
-            st.markdown("""
-            #### Long-term Strategies:
-            - [ ] Track promotion effectiveness
-            - [ ] Monitor bundle sales performance
-            - [ ] Analyze seasonal variations
-            - [ ] Review pricing strategy
-            """)
-    else:
-        st.warning("No rules match your search. Try different terms.")
+            col1, col2 = st.columns([1, 1])
+            
+            with col1:
+                fig = create_rule_visualization(selected_rule_data)
+                st.plotly_chart(fig, use_container_width=True)
+                
+            with col2:
+                metrics_fig = go.Figure()
+                
+                # Add confidence gauge
+                metrics_fig.add_trace(go.Indicator(
+                    mode="gauge+number",
+                    value=selected_rule_data['confidence'] * 100,
+                    title={'text': "Confidence %"},
+                    domain={'x': [0, 1], 'y': [0.6, 1]},
+                    gauge={
+                        'axis': {'range': [0, 100]},
+                        'bar': {'color': "lightblue"},
+                        'steps': [
+                            {'range': [0, 50], 'color': 'lightgray'},
+                            {'range': [50, 75], 'color': 'gray'},
+                            {'range': [75, 100], 'color': 'darkgray'}
+                        ]
+                    }
+                ))
+                
+                # Add lift gauge
+                metrics_fig.add_trace(go.Indicator(
+                    mode="gauge+number",
+                    value=selected_rule_data['lift'],
+                    title={'text': "Lift"},
+                    domain={'x': [0, 1], 'y': [0, 0.4]},
+                    gauge={
+                        'axis': {'range': [0, max(5, selected_rule_data['lift'])]},
+                        'bar': {'color': "lightgreen"},
+                        'steps': [
+                            {'range': [0, 1], 'color': 'lightgray'},
+                            {'range': [1, 2], 'color': 'gray'},
+                            {'range': [2, max(5, selected_rule_data['lift'])], 'color': 'darkgray'}
+                        ]
+                    }
+                ))
+                
+                metrics_fig.update_layout(
+                    height=600,
+                    margin=dict(t=40, b=0)
+                )
+                
+                st.plotly_chart(metrics_fig, use_container_width=True)
+        else:
+            st.warning("No rules match your search. Try different terms.")
+        
+    # Tab 3: Recommendations
+    with tab3:
+        if 'selected_rule' in locals():
+            st.markdown(interpret_rule(selected_rule_data, len(df)))
+            
+            st.subheader("📋 Implementation Checklist")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("""
+                #### Immediate Actions:
+                - [ ] Update planogram to reflect product proximity
+                - [ ] Create bundle promotion
+                - [ ] Set up cross-sell recommendation
+                - [ ] Adjust inventory alerts
+                """)
+                
+            with col2:
+                st.markdown("""
+                #### Long-term Strategies:
+                - [ ] Track promotion effectiveness
+                - [ ] Monitor bundle sales performance
+                - [ ] Analyze seasonal variations
+                - [ ] Review pricing strategy
+                """)
+        else:
+            st.info("Select a rule in the Analysis tab to see recommendations")
     
-    # Export options
+    # Export options (below tabs)
     st.header("Export Results")
-    col7, col8 = st.columns(2)
+    col1, col2 = st.columns(2)
     
-    with col7:
+    with col1:
         csv = display_rules.to_csv(index=False)
         st.download_button(
             label="Download Association Rules (CSV)",
@@ -537,15 +595,14 @@ def main():
             mime="text/csv"
         )
     
-    with col8:
+    with col2:
         csv = frequent_itemsets.to_csv(index=False)
         st.download_button(
             label="Download Frequent Itemsets (CSV)",
             data=csv,
             file_name="frequent_itemsets.csv",
             mime="text/csv"
-        )
-    
+        )   
     
 if __name__ == "__main__":
     main()
