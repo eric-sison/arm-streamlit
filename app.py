@@ -501,21 +501,20 @@ def main():
                 display_rules['rule_text'] == selected_rule
             ].iloc[0]
             
-            col1, col2 = st.columns([1, 1])
+            # Create three columns for visualization and metrics
+            col1, col2, col3 = st.columns([2, 1, 1])
             
             with col1:
+                # Rule visualization
                 fig = create_rule_visualization(selected_rule_data)
                 st.plotly_chart(fig, use_container_width=True)
-                
+            
             with col2:
-                metrics_fig = go.Figure()
-                
-                # Add confidence gauge
-                metrics_fig.add_trace(go.Indicator(
+                # Confidence gauge
+                conf_fig = go.Figure(go.Indicator(
                     mode="gauge+number",
                     value=selected_rule_data['confidence'] * 100,
                     title={'text': "Confidence %"},
-                    domain={'x': [0, 1], 'y': [0.6, 1]},
                     gauge={
                         'axis': {'range': [0, 100]},
                         'bar': {'color': "lightblue"},
@@ -526,13 +525,18 @@ def main():
                         ]
                     }
                 ))
-                
-                # Add lift gauge
-                metrics_fig.add_trace(go.Indicator(
+                conf_fig.update_layout(
+                    height=250,
+                    margin=dict(l=20, r=20, t=40, b=20)
+                )
+                st.plotly_chart(conf_fig, use_container_width=True)
+            
+            with col3:
+                # Lift gauge
+                lift_fig = go.Figure(go.Indicator(
                     mode="gauge+number",
                     value=selected_rule_data['lift'],
                     title={'text': "Lift"},
-                    domain={'x': [0, 1], 'y': [0, 0.4]},
                     gauge={
                         'axis': {'range': [0, max(5, selected_rule_data['lift'])]},
                         'bar': {'color': "lightgreen"},
@@ -543,42 +547,40 @@ def main():
                         ]
                     }
                 ))
-                
-                metrics_fig.update_layout(
-                    height=600,
-                    margin=dict(t=40, b=0)
+                lift_fig.update_layout(
+                    height=250,
+                    margin=dict(l=20, r=20, t=40, b=20)
                 )
-                
-                st.plotly_chart(metrics_fig, use_container_width=True)
-        else:
-            st.warning("No rules match your search. Try different terms.")
-        
+                st.plotly_chart(lift_fig, use_container_width=True)
+
+
     # Tab 3: Recommendations
     with tab3:
         if 'selected_rule' in locals():
             st.markdown(interpret_rule(selected_rule_data, len(df)))
             
-            st.subheader("📋 Implementation Checklist")
+            # st.subheader("📋 Implementation Checklist")
             
-            col1, col2 = st.columns(2)
+            # col1, col2 = st.columns(2)
             
-            with col1:
-                st.markdown("""
-                #### Immediate Actions:
-                - [ ] Update planogram to reflect product proximity
-                - [ ] Create bundle promotion
-                - [ ] Set up cross-sell recommendation
-                - [ ] Adjust inventory alerts
-                """)
+            # with col1:
+            #     st.markdown("""
+            #     #### Immediate Actions:
+            #     - [ ] Update planogram to reflect product proximity
+            #     - [ ] Create bundle promotion
+            #     - [ ] Set up cross-sell recommendation
+            #     - [ ] Adjust inventory alerts
+            #     """)
                 
-            with col2:
-                st.markdown("""
-                #### Long-term Strategies:
-                - [ ] Track promotion effectiveness
-                - [ ] Monitor bundle sales performance
-                - [ ] Analyze seasonal variations
-                - [ ] Review pricing strategy
-                """)
+            # with col2:
+            #     st.markdown("""
+            #     #### Long-term Strategies:
+            #     - [ ] Track promotion effectiveness
+            #     - [ ] Monitor bundle sales performance
+            #     - [ ] Analyze seasonal variations
+            #     - [ ] Review pricing strategy
+            #     """)
+        
         else:
             st.info("Select a rule in the Analysis tab to see recommendations")
     
