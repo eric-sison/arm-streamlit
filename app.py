@@ -558,29 +558,7 @@ def main():
     with tab3:
         if 'selected_rule' in locals():
             st.markdown(interpret_rule(selected_rule_data, len(df)))
-            
-            # st.subheader("📋 Implementation Checklist")
-            
-            # col1, col2 = st.columns(2)
-            
-            # with col1:
-            #     st.markdown("""
-            #     #### Immediate Actions:
-            #     - [ ] Update planogram to reflect product proximity
-            #     - [ ] Create bundle promotion
-            #     - [ ] Set up cross-sell recommendation
-            #     - [ ] Adjust inventory alerts
-            #     """)
-                
-            # with col2:
-            #     st.markdown("""
-            #     #### Long-term Strategies:
-            #     - [ ] Track promotion effectiveness
-            #     - [ ] Monitor bundle sales performance
-            #     - [ ] Analyze seasonal variations
-            #     - [ ] Review pricing strategy
-            #     """)
-        
+
         else:
             st.info("Select a rule in the Analysis tab to see recommendations")
     
