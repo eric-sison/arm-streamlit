@@ -59,7 +59,7 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-### Docker Installation
+### Docker Installation (Optional)
 
 1. Build the Docker image:
 
@@ -89,52 +89,6 @@ True,False,True
 False,True,False
 True,True,False
 ```
-
-## 🛠️ Technical Stack
-
-- **Frontend:** Streamlit
-- **Data Processing:** Pandas, NumPy
-- **Analysis:** MLxtend (Association Rules Mining)
-- **Visualization:** Plotly, NetworkX
-
-## 📝 Usage
-
-1. Upload your transaction data in CSV format
-2. Adjust analysis parameters:
-   - Minimum Support
-   - Minimum Confidence
-   - Minimum Lift
-3. Explore visualizations and insights
-4. Search and filter rules
-5. Export results
-
-## 🔍 Analysis Features
-
-### Association Rules
-
-- Discover frequent itemsets
-- Generate association rules
-- Calculate support, confidence, and lift metrics
-
-### Visualizations
-
-- **Heatmap:** Product co-occurrence patterns
-- **Scatter Plot:** Rule metrics distribution
-- **Network Graph:** Product relationships
-- **Metric Gauges:** Rule strength indicators
-
-### Insights
-
-- Identify strong product associations
-- Analyze purchase patterns
-- Generate business recommendations
-- Export findings
-
-## 🙏 Acknowledgments
-
-- MLxtend library for association rule mining
-- Streamlit for the web framework
-- Plotly for interactive visualizations
 
 ---
 
