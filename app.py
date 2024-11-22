@@ -469,107 +469,162 @@ def main():
             
     # Tab 2: Analysis
     # In Tab 2: Analysis
+    # Tab 2: Analysis
     with tab2:
-        # Add scatter plot at the top
-        st.header("Rules Distribution")
+        # 1. Overview Visualizations
+        st.header("Rule Pattern Analysis")
         
-        # Create scatter plot
-        scatter_fig = px.scatter(
-            display_rules,
-            x='confidence',
-            y='lift',
-            size='support',  # Size of points based on support
-            hover_data={
-                'antecedents': True,
-                'consequents': True,
-                'support': ':.3f',
-                'confidence': ':.3f',
-                'lift': ':.3f'
-            },
-            title='Rule Metrics Distribution',
-            labels={
-                'confidence': 'Confidence',
-                'lift': 'Lift',
-                'support': 'Support'
-            },
-            height=400
-        )
+        # Create two columns for scatter plot and heatmap
+        col1, col2 = st.columns([1, 1])
         
-        # Update layout
-        scatter_fig.update_traces(
-            marker=dict(
-                sizemin=5,  # Minimum size of points
-                sizeref=2.*max(display_rules['support'])/(20.**2),  # Scale size reference
-                sizemode='area'
-            ),
-            selector=dict(mode='markers')
-        )
-        
-        scatter_fig.update_layout(
-            title_x=0.5,
-            title_y=0.95,
-            margin=dict(l=20, r=20, t=40, b=20),
-            xaxis_title="Confidence",
-            yaxis_title="Lift",
-            showlegend=False,
-            # Add reference lines
-            shapes=[
-                # Horizontal line at lift=1
-                dict(
-                    type="line",
-                    yref="y",
-                    y0=1,
-                    y1=1,
-                    xref="paper",
-                    x0=0,
-                    x1=1,
-                    line=dict(
-                        color="red",
-                        width=1,
-                        dash="dash",
+        with col1:
+            # Scatter Plot
+            scatter_fig = px.scatter(
+                display_rules,
+                x='confidence',
+                y='lift',
+                size='support',
+                hover_data={
+                    'antecedents': True,
+                    'consequents': True,
+                    'support': ':.3f',
+                    'confidence': ':.3f',
+                    'lift': ':.3f'
+                },
+                title='Rule Metrics Distribution',
+                labels={
+                    'confidence': 'Confidence',
+                    'lift': 'Lift',
+                    'support': 'Support'
+                },
+                height=500
+            )
+            
+            scatter_fig.update_traces(
+                marker=dict(
+                    sizemin=5,
+                    sizeref=2.*max(display_rules['support'])/(20.**2),
+                    sizemode='area'
+                ),
+                selector=dict(mode='markers')
+            )
+            
+            scatter_fig.update_layout(
+                title_x=0.5,
+                margin=dict(l=20, r=20, t=40, b=20),
+                xaxis_title="Confidence",
+                yaxis_title="Lift",
+                showlegend=False,
+                shapes=[
+                    dict(
+                        type="line",
+                        yref="y",
+                        y0=1,
+                        y1=1,
+                        xref="paper",
+                        x0=0,
+                        x1=1,
+                        line=dict(
+                            color="red",
+                            width=1,
+                            dash="dash",
+                        )
                     )
-                )
-            ],
-            annotations=[
-                # Annotation for the reference line
-                dict(
-                    x=0.02,
-                    y=1.1,
-                    xref="paper",
-                    yref="y",
-                    text="Baseline (Lift=1)",
-                    showarrow=False,
-                    font=dict(size=10, color="red"),
-                )
-            ]
-        )
-        
-        # Display the scatter plot
-        st.plotly_chart(scatter_fig, use_container_width=True)
-        
-        # Add explanation for the scatter plot
-        with st.expander("📊 Understanding the Scatter Plot"):
-            st.markdown("""
-            ### Scatter Plot Interpretation
+                ],
+                annotations=[
+                    dict(
+                        x=0.02,
+                        y=1.1,
+                        xref="paper",
+                        yref="y",
+                        text="Baseline (Lift=1)",
+                        showarrow=False,
+                        font=dict(size=10, color="red"),
+                    )
+                ]
+            )
             
-            This scatter plot shows the relationship between Confidence and Lift for all rules:
-            
-            - **X-axis**: Confidence (how likely the consequent follows from the antecedent)
-            - **Y-axis**: Lift (how much more likely compared to random chance)
-            - **Bubble size**: Support (how frequently the rule appears in the data)
-            
-            Key insights:
-            - Points above the red line (Lift > 1) indicate positive associations
-            - Larger bubbles represent more frequent patterns
-            - Top-right quadrant shows strong, reliable rules
-            - Hover over points to see the specific items in each rule
-            """)
+            st.plotly_chart(scatter_fig, use_container_width=True)
         
-        # Rest of the Analysis tab code...
+        with col2:
+            # Heatmap
+            # Create co-occurrence matrix
+            product_pairs = []
+            for _, row in display_rules.iterrows():
+                antecedents = row['antecedents'].split(', ')
+                consequents = row['consequents'].split(', ')
+                for ant in antecedents:
+                    for cons in consequents:
+                        product_pairs.append((ant, cons, row['lift']))
+
+            pairs_df = pd.DataFrame(product_pairs, columns=['product1', 'product2', 'lift'])
+            
+            heatmap_data = pairs_df.pivot_table(
+                index='product1',
+                columns='product2',
+                values='lift',
+                aggfunc='mean'
+            ).fillna(0)
+            
+            heatmap_fig = go.Figure(data=go.Heatmap(
+                z=heatmap_data.values,
+                x=heatmap_data.columns,
+                y=heatmap_data.index,
+                colorscale='RdBu',
+                zmid=1,
+                text=np.round(heatmap_data.values, 2),
+                texttemplate='%{text}',
+                textfont={"size": 10},
+                hoverongaps=False,
+            ))
+
+            heatmap_fig.update_layout(
+                title='Product Association Strength (Lift)',
+                title_x=0.5,
+                height=500,
+                xaxis={
+                    'tickangle': 45,
+                    'title': 'Consequent Product'
+                },
+                yaxis={
+                    'title': 'Antecedent Product'
+                },
+                margin=dict(l=20, r=20, t=40, b=100)
+            )
+            
+            st.plotly_chart(heatmap_fig, use_container_width=True)
+        
+        # Add explanations in expandable sections
+        col3, col4 = st.columns([1, 1])
+        
+        with col3:
+            with st.expander("📊 Understanding the Scatter Plot"):
+                st.markdown("""
+                The scatter plot shows the relationship between Confidence and Lift:
+                
+                - **X-axis**: Confidence (likelihood of consequent following antecedent)
+                - **Y-axis**: Lift (improvement over random chance)
+                - **Bubble size**: Support (frequency in data)
+                - Points above red line (Lift > 1) show positive associations
+                """)
+        
+        with col4:
+            with st.expander("🔥 Understanding the Heatmap"):
+                st.markdown("""
+                The heatmap shows product association strengths:
+                
+                - **Red**: Strong positive associations (Lift > 1)
+                - **White**: Neutral associations (Lift ≈ 1)
+                - **Blue**: Negative associations (Lift < 1)
+                - Numbers show exact lift values
+                """)
+        
+        # 2. Association Rules Table
         st.header("Association Rules")
         st.dataframe(display_rules, use_container_width=True)
         
-        st.header("Rule Analysis")
+        # 3. Detailed Rule Analysis
+        st.header("Detailed Rule Analysis")
         search_term = st.text_input("🔍 Search rules (e.g., product name)", "")
         
         # Create rule text and filter based on search
@@ -599,14 +654,14 @@ def main():
             ].iloc[0]
             
             # Create three columns for visualization and metrics
-            col1, col2, col3 = st.columns([2, 1, 1])
+            col5, col6, col7 = st.columns([2, 1, 1])
             
-            with col1:
+            with col5:
                 # Rule visualization
                 fig = create_rule_visualization(selected_rule_data)
                 st.plotly_chart(fig, use_container_width=True)
             
-            with col2:
+            with col6:
                 # Confidence gauge
                 conf_fig = go.Figure(go.Indicator(
                     mode="gauge+number",
@@ -628,7 +683,7 @@ def main():
                 )
                 st.plotly_chart(conf_fig, use_container_width=True)
             
-            with col3:
+            with col7:
                 # Lift gauge
                 lift_fig = go.Figure(go.Indicator(
                     mode="gauge+number",
@@ -649,8 +704,10 @@ def main():
                     margin=dict(l=20, r=20, t=40, b=20)
                 )
                 st.plotly_chart(lift_fig, use_container_width=True)
+        else:
+            st.warning("No rules match your search. Try different terms.")
 
-
+    
     # Tab 3: Recommendations
     with tab3:
         if 'selected_rule' in locals():
